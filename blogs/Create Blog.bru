@@ -1,0 +1,20 @@
+meta {
+  name: Create Blog
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/blogs
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Full Stack Open Blog",
+    "author": "Mauri Jourdan",
+    "url": "http://myblog.com.ar",
+    "likes": 25
+  }
+}
