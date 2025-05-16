@@ -1,0 +1,17 @@
+meta {
+  name: Update Blog
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base_url}}/blogs/6823183789a8a4d5e1af12b3
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "likes": 80
+  }
+}

@@ -16,12 +16,14 @@ const initialBlogs = [
 ]
 
 const nonExistingId = async () => {
+
   const blog = new Blog(  {
     title: 'Next.js Performance Guide',
     author: 'Carlos Vega',
     url: 'https://carlosvega.dev/nextjs-performance',
     likes: 102,
   },)
+
   await blog.save()
   await blog.deleteOne()
 
