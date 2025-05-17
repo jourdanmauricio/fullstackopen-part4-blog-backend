@@ -1,20 +1,45 @@
 const assert = require('node:assert/strict')
-const { test, after, beforeEach, describe } = require('node:test')
+const { test, after, beforeEach, describe, before } = require('node:test')
 const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const Blog = require('../models/blog')
 const helper = require('./test_helper')
+const bcrypt = require('bcrypt')
+const User = require('../models/user')
 
 const api = supertest(app)
 
 describe('when there is initially some blogs saved', () => {
 
+  let loggedInToken = ''
+  let savedUserId = ''
+
+  before(async() => {
+    console.log('Se ejecuta UNA VEZ antes de todos los tests')
+    await User.deleteMany({})
+    const passwordHash = await bcrypt.hash('sekret', 10)
+    const user = new User({ name: 'Mauricio Jourdan', username: 'root', password: passwordHash })
+    await user.save()
+    savedUserId = user.id
+
+    const loginResponse = await api
+      .post('/api/login')
+      .send({
+        username: 'root',
+        password: 'sekret'
+      })
+
+    loggedInToken = loginResponse.body.token
+
+  })
+
   beforeEach(async () => {
+
     await Blog.deleteMany({})
 
     const blogObjects = helper.initialBlogs
-      .map(blog => new Blog(blog))
+      .map(blog => new Blog({ ...blog, user: savedUserId }))
 
     const promiseArray = blogObjects.map(blog => blog.save())
     await Promise.all(promiseArray)
@@ -58,6 +83,9 @@ describe('when there is initially some blogs saved', () => {
         .expect(200)
         .expect('Content-Type', /application\/json/)
 
+      delete resultblog.body.user
+      delete blogToView.user
+
       assert.deepStrictEqual(resultblog.body, blogToView)
     })
 
@@ -80,7 +108,7 @@ describe('when there is initially some blogs saved', () => {
 
   describe('addition of a new blog', () => {
 
-    test('a valid blog can be added ', async () => {
+    test('fails with statuscode 401 Unauthorized if a token is not provided', async () => {
       const newBlog =   {
         title: 'React Tips & Tricks',
         author: 'Laura Martínez',
@@ -91,9 +119,30 @@ describe('when there is initially some blogs saved', () => {
       await api
         .post('/api/blogs')
         .send(newBlog)
-        .expect(201)
+        .expect(401)
         .expect('Content-Type', /application\/json/)
 
+      const blogsAtEnd = await helper.blogsInDb()
+      assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length)
+      const titles = blogsAtEnd.map(n => n.title)
+
+      assert(!titles.includes('React Tips & Tricks'))
+    })
+
+    test('a valid blog can be added ', async () => {
+      const newBlog =   {
+        title: 'React Tips & Tricks',
+        author: 'Laura Martínez',
+        url: 'https://lauram.dev/react-tips',
+        likes: 78,
+      }
+
+      await api
+        .post('/api/blogs')
+        .set('Authorization', `Bearer ${loggedInToken}`)
+        .send(newBlog)
+        .expect(201)
+        .expect('Content-Type', /application\/json/)
 
       const blogsAtEnd = await helper.blogsInDb()
       assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length + 1)
@@ -122,6 +171,7 @@ describe('when there is initially some blogs saved', () => {
 
       await api
         .post('/api/blogs')
+        .set('Authorization', `Bearer ${loggedInToken}`)
         .send(newBlog)
         .expect(400)
 
@@ -130,7 +180,7 @@ describe('when there is initially some blogs saved', () => {
     })
   })
 
-  describe('addition of a new blog', () => {
+  describe('updating a blog', () => {
 
     test('the blog cannot be modified', async () => {
       const validNonexistingId = await helper.nonExistingId()
@@ -171,7 +221,7 @@ describe('when there is initially some blogs saved', () => {
 
   })
 
-  describe('deleting a blog', () => {
+  describe('deleting a blog, fails with statuscode 401 Unauthorized if a token is not provided', () => {
 
     test('the blog can be deleted', async () => {
       const blogsAtStart = await helper.blogsInDb()
@@ -179,15 +229,32 @@ describe('when there is initially some blogs saved', () => {
 
       await api
         .delete(`/api/blogs/${blogToDelete.id}`)
-        .expect(204)
+        .expect(401)
 
       const blogsAtEnd = await helper.blogsInDb()
 
       const titles = blogsAtEnd.map(r => r.title)
-      assert(!titles.includes(blogToDelete.title))
+      assert(titles.includes(blogToDelete.title))
 
-      assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length - 1)
+      assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length)
     })
+  })
+
+  test('the blog can be deleted', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToDelete = blogsAtStart[0]
+
+    await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('Authorization', `Bearer ${loggedInToken}`)
+      .expect(204)
+
+    const blogsAtEnd = await helper.blogsInDb()
+
+    const titles = blogsAtEnd.map(r => r.title)
+    assert(!titles.includes(blogToDelete.title))
+
+    assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length - 1)
   })
 })
 

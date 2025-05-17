@@ -1,0 +1,23 @@
+meta {
+  name: Create Blog
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/blogs
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Tech Trends 2025",
+    "author": "Lucía González",
+    "url": "https://luciagonzalez.dev/tech-trends"
+  }
+}
+
+script:pre-request {
+  req.setHeader("Authorization", "Bearer {{token}}")
+}
