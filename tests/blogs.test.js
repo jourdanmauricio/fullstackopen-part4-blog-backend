@@ -107,3 +107,29 @@ describe('favorite blog', () => {
     })
   })
 })
+
+describe('most blogs and likes', () => {
+  const expectedMostByAuthor = {
+    author: 'Robert C. Martin',
+    blogs: 3
+  }
+
+  const expectedMostLikes = {
+    author: 'Edsger W. Dijkstra',
+    likes: 17,
+  }
+
+  test('From a list of blogs, the author with the largest number of blogs is returned', () => {
+    const result = listHelper.mostBlogs(blogs)
+    assert.deepStrictEqual(result, expectedMostByAuthor)
+  })
+
+  test('From a list of blogs, returns the author whose blog posts have the most likes', () => {
+    const result = listHelper.mostLikes(blogs)
+    assert.deepStrictEqual(result, expectedMostLikes)
+  })
+
+})
+
+
+
