@@ -8,7 +8,6 @@ blogRouter.get('/', async (request, response) => {
   response.json(blogs)
 })
 
-
 blogRouter.get('/:id', async (request, response) => {
 
   const blog = await Blog.findById(request.params.id)
@@ -19,7 +18,6 @@ blogRouter.get('/:id', async (request, response) => {
 
   response.json(blog)
 })
-
 
 blogRouter.post('/', middleware.userExtractor, async (request, response) => {
   const body = request.body
@@ -63,6 +61,7 @@ blogRouter.delete('/:id', middleware.userExtractor, async (request, response) =>
   const blog = await Blog.findById(request.params.id)
 
   if (!blog) return response.status(404).json({ error: 'blog not found' })
+  if (!blog.user) return response.status(403).json({ error: 'you do not have permission to delete this blog' })
 
   if (blog && blog.user.equals(user._id)) {
     await Blog.findByIdAndDelete(request.params.id)
